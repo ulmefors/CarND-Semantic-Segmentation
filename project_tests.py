@@ -117,7 +117,7 @@ def test_train_nn(train_nn):
 
     def get_batches_fn(batach_size_parm):
         shape = [batach_size_parm, 2, 3, 3]
-        return np.arange(np.prod(shape)).reshape(shape)
+        return np.arange(np.prod(shape)).reshape(shape), np.arange(np.prod(shape)).reshape(shape)
 
     train_op = tf.constant(0)
     cross_entropy_loss = tf.constant(10.11)

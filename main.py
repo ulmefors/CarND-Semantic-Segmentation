@@ -59,7 +59,19 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :return: The Tensor for the last layer of output
     """
     # TODO: Implement function
-    return None
+    # TODO: conv2d or conv2d_transpose?
+    # https://classroom.udacity.com/nanodegrees/nd013/parts/6047fe34-d93c-4f50-8336-b70ef10cb4b2/modules/595f35e6
+    # -b940-400f-afb2-2015319aa640/lessons/69fe4a9c-656e-46c8-bc32-aee9e60b8984/concepts/3dcaf318-9e4b-4bb6-b057
+    # -886c254abd44
+
+    output3 = tf.layers.conv2d(vgg_layer3_out, num_classes, 1, strides=(1, 1))
+    output4 = tf.layers.conv2d(vgg_layer4_out, num_classes, 1, strides=(1, 1))
+    output7 = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, strides=(1, 1))
+
+    output = tf.add(output3, output4)
+    output = tf.add(output, output7)
+
+    return output
 tests.test_layers(layers)
 
 
@@ -75,7 +87,8 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
 
     # TODO Verify train_op, loss and optimizer
     logits = tf.reshape(nn_last_layer, (-1, num_classes))
-    cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=correct_label))
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=correct_label)
+    cross_entropy_loss = tf.reduce_mean(cross_entropy)
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
     train_op = optimizer.minimize(cross_entropy_loss)
 
@@ -98,7 +111,32 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param keep_prob: TF Placeholder for dropout keep probability
     :param learning_rate: TF Placeholder for learning rate
     """
+
     # TODO: Implement function
+    print('*** Starting training ***')
+    for i in range(epochs):
+        print('*** Epoch {} ***'.format(i+1))
+
+        sess.run(tf.global_variables_initializer())
+
+        batch_generator = get_batches_fn(batch_size)
+        #images, gt_images = batch_generator.next()
+        print(batch_generator)
+        #print(batch_generator.next())
+        while True:
+            batch_generator = get_batches_fn(batch_size)
+
+        #print(batch[0])
+        [images, gt_images] = get_batches_fn(batch_size)
+
+        loss = sess.run([train_op, cross_entropy_loss], feed_dict={
+            input_image: images,
+            correct_label: gt_images,
+            keep_prob: 1.0,
+            learning_rate: 0.001
+        })
+
+
     pass
 tests.test_train_nn(train_nn)
 
@@ -117,6 +155,18 @@ def run():
     # You'll need a GPU with at least 10 teraFLOPS to train on.
     #  https://www.cityscapes-dataset.com/
 
+    # Hyperparameters
+    epochs = 2
+    batch_size = 128
+
+    # TODO: Define correct_label
+    input_image = tf.placeholder(tf.float32, name='input_image')
+    #correct_label = tf.placeholder(tf.float32, (None, image_shape[0], image_shape[1], num_classes), name='correct_label')
+    correct_label = tf.placeholder(tf.float32, name='correct_label')
+    # TODO: Placeholder or Tensor from load_vgg()
+    keep_prob = tf.placeholder(tf.float32, name='keep_prob')
+    learning_rate = tf.placeholder(tf.float32, name='learning_rate')
+
     with tf.Session() as sess:
         # Path to vgg model
         vgg_path = os.path.join(data_dir, 'vgg')
@@ -127,9 +177,13 @@ def run():
         #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
 
         # TODO: Build NN using load_vgg, layers, and optimize function
+        image_input, keep_prob, layer3_out, layer4_out, layer7_out = load_vgg(sess, vgg_path)
+        nn_last_layer = layers(layer3_out, layer4_out, layer7_out, num_classes)
+        logits, train_op, cross_entropy_loss = optimize(nn_last_layer, correct_label, learning_rate, num_classes)
 
         # TODO: Train NN using the train_nn function
-
+        train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss,
+                 input_image, correct_label, keep_prob, learning_rate)
         # TODO: Save inference data using helper.save_inference_samples
         #  helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
 
