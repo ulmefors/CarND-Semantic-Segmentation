@@ -166,8 +166,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
         batch_generator = get_batches_fn(batch_size)
 
         # Get one batch of images
-        for j in range(num_batches):
-            images, gt_images = next(batch_generator)
+        for batch, (images, gt_images) in enumerate(batch_generator):
 
             # Feed dictionary
             feed_dict = {
@@ -181,7 +180,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
             sess.run(train_op, feed_dict=feed_dict)
 
             # Print and log cross entropy loss
-            if j == num_batches-1 or (j+1) % num_batches_per_log == 0:
+            if batch == num_batches-1 or (batch+1) % num_batches_per_log == 0:
                 feed_dict[keep_prob] = 1.0
 
                 try:
@@ -189,15 +188,12 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
                     filewriter.add_summary(summary, image_count)
                     image_count += batch_size * num_batches_per_log
                 except (TypeError, AttributeError):
-                    if i == 0 and j == 0:
+                    if i == 0 and batch == 0:
                         print('Not logging to Tensorboard')
 
                 loss = sess.run(cross_entropy_loss, feed_dict=feed_dict)
                 print("Cross Entropy Loss: ", loss)
-
-
-# Test batch function looks strange
-#tests.test_train_nn(train_nn)
+tests.test_train_nn(train_nn)
 
 
 def run():
