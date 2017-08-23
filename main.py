@@ -4,7 +4,7 @@ import helper
 import warnings
 from distutils.version import LooseVersion
 import project_tests as tests
-
+import time
 
 # Check TensorFlow Version
 assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), 'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(tf.__version__)
@@ -179,9 +179,11 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
             }
 
             # Run operations
-            loss = sess.run([train_op, cross_entropy_loss], feed_dict=feed_dict)
+            sess.run(train_op, feed_dict=feed_dict)
 
-            print(loss)
+            if i == num_batches-1 or i % 10 == 0:
+                loss = sess.run(cross_entropy_loss, feed_dict=feed_dict)
+                print("Cross Entropy Loss: ", loss)
 
 # Test batch function looks strange
 #tests.test_train_nn(train_nn)
@@ -204,8 +206,8 @@ def run():
     #  https://www.cityscapes-dataset.com/
 
     # Hyperparameters
-    epochs = 1
-    batch_size = 2
+    epochs = 20
+    batch_size = 4
 
     correct_label = tf.placeholder(tf.float32, name='correct_label')
     learning_rate = tf.placeholder(tf.float32, name='learning_rate')
@@ -220,18 +222,24 @@ def run():
         # OPTIONAL: Augment Images for better results
         #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
 
-        # TODO: Build NN using load_vgg, layers, and optimize function
         input_image, keep_prob, layer3_out, layer4_out, layer7_out = load_vgg(sess, vgg_path)
 
         nn_last_layer = layers(layer3_out, layer4_out, layer7_out, num_classes)
 
         logits, train_op, cross_entropy_loss = optimize(nn_last_layer, correct_label, learning_rate, num_classes)
 
-        # TODO: Train NN using the train_nn function
+        pre_training = time.time()
+
         train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss,
                  input_image, correct_label, keep_prob, learning_rate)
 
-        # TODO: Save inference data using helper.save_inference_samples
+        post_training = time.time()
+
+        print('')
+        print('*** Training Comlete ***')
+        print('Duration: %.0f seconds' % (post_training - pre_training))
+        print('')
+
         helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
 
         # OPTIONAL: Apply the trained model to a video
