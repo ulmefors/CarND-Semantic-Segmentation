@@ -104,7 +104,7 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     # Size is (?, 20, 72, 256)
 
     # Transpose
-    kernel_size = 4
+    kernel_size = 8
     strides = (8, 8)
     filters = num_classes
     output = tf.layers.conv2d_transpose(output, filters, kernel_size, strides=strides)
