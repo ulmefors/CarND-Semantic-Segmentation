@@ -61,11 +61,16 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :param num_classes: Number of classes to classify
     :return: The Tensor for the last layer of output
     """
-    # TODO: 1x1 convolution on layer 7
-    # 1x1 convolution
-    # kernel_size = 1
-    # strides = (1, 1)
-    # vgg_layer7_out = tf.layers.conv2d(vgg_layer7_out, num_classes, kernel_size, strides=strides)
+
+    # 1x1 convolutions
+    """
+    kernel_size = 1
+    strides = (1, 1)
+    filters = num_classes
+    layer7_fcn = tf.layers.conv2d(vgg_layer7_out, filters, kernel_size, strides=strides, padding='same')
+    layer4_fcn = tf.layers.conv2d(vgg_layer4_out, filters, kernel_size, strides=strides, padding='same')
+    layer3_fcn = tf.layers.conv2d(vgg_layer3_out, filters, kernel_size, strides=strides, padding='same')
+    """
 
     # Transpose
     kernel_size = 2
@@ -138,7 +143,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     # Hyperparameters
     dropout_keep_prob = 0.8
     start_learning_rate = 0.001
-    learning_rate_decay = 1.0
+    learning_rate_decay = 0.98
 
     # Initialize variables
     sess.run(tf.global_variables_initializer())
@@ -212,7 +217,7 @@ def run():
     #  https://www.cityscapes-dataset.com/
 
     # Hyperparameters
-    epochs = 20
+    epochs = 40
     batch_size = 4
 
     correct_label = tf.placeholder(tf.float32, name='correct_label')
@@ -251,11 +256,13 @@ def run():
         post_training = time.time()
 
         print('')
-        print('*** Training Comlete ***')
+        print('*** Training Complete ***')
         print('Duration: %.0f seconds' % (post_training - pre_training))
         print('')
 
-        # helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
+        # Save inference samples if running longer training
+        if epochs >= 20:
+            helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
 
         # OPTIONAL: Apply the trained model to a video
 
