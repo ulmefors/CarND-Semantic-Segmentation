@@ -217,9 +217,14 @@ def run():
     #  https://www.cityscapes-dataset.com/
 
     # Hyperparameters
-    epochs = 40
-    batch_size = 4
+    epochs = 100
+    batch_size = 8
 
+    # Save log and inference samples
+    training_name = 'k10b08e100do08lrd098'
+    save_dir = os.path.join(runs_dir, 'train', training_name)
+
+    # Placeholders
     correct_label = tf.placeholder(tf.float32, name='correct_label')
     learning_rate = tf.placeholder(tf.float32, name='learning_rate')
 
@@ -242,7 +247,7 @@ def run():
         # Log Cross Entropy for visualization in Tensorboard
         tf.summary.scalar('cross_entropy', cross_entropy_loss)
         merged_summary = tf.summary.merge_all()
-        train_writer = tf.summary.FileWriter(os.path.join(runs_dir, 'train'))
+        train_writer = tf.summary.FileWriter(save_dir)
 
         # Start time
         pre_training = time.time()
@@ -262,7 +267,7 @@ def run():
 
         # Save inference samples if running longer training
         if epochs >= 20:
-            helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
+            helper.save_inference_samples(save_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
 
         # OPTIONAL: Apply the trained model to a video
 
