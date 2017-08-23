@@ -33,12 +33,9 @@ def load_vgg(sess, vgg_path):
 
     # Load model and weights
     tf.saved_model.loader.load(sess, [vgg_tag], vgg_path)
-
-    # TODO: sess.graph instead of tf.get_default_graph()?
-    # graph = tf.get_default_graph()
     graph = sess.graph
 
-    # Tensorboard
+    # Uncomment to view graph in Tensorboard
     # tf.summary.FileWriter('runs', graph)
 
     # Get tensors from graph
@@ -62,7 +59,8 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :return: The Tensor for the last layer of output
     """
 
-    # 1x1 convolutions
+    # 1x1 convolutions can be used to add layers with num_classes channels instead of 256/512.
+    # It was found that this technique resultet in worse performance.
     """
     kernel_size = 1
     strides = (1, 1)
@@ -139,6 +137,8 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param correct_label: TF Placeholder for label images
     :param keep_prob: TF Placeholder for dropout keep probability
     :param learning_rate: TF Placeholder for learning rate
+    :param merged_summary: Scalar summaries for Tensorboard
+    :param filewriter: FileWriter for Tensorboard
     """
     # Hyperparameters
     dropout_keep_prob = 0.8
@@ -183,6 +183,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
             if batch == num_batches-1 or (batch+1) % num_batches_per_log == 0:
                 feed_dict[keep_prob] = 1.0
 
+                # Save loss to disk for Tensorboard visualization
                 try:
                     summary = sess.run(merged_summary, feed_dict=feed_dict)
                     filewriter.add_summary(summary, image_count)
@@ -234,10 +235,13 @@ def run():
         # OPTIONAL: Augment Images for better results
         #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
 
+        # Get layers from pretrained VGG graph
         input_image, keep_prob, layer3_out, layer4_out, layer7_out = load_vgg(sess, vgg_path)
 
+        # Get last layer from fully convolutional network using vgg layers, skip layers, and transpose convolutions
         nn_last_layer = layers(layer3_out, layer4_out, layer7_out, num_classes)
 
+        # Get logits, Tensorflow train and loss operations
         logits, train_op, cross_entropy_loss = optimize(nn_last_layer, correct_label, learning_rate, num_classes)
 
         # Log Cross Entropy for visualization in Tensorboard
@@ -245,7 +249,7 @@ def run():
         merged_summary = tf.summary.merge_all()
         train_writer = tf.summary.FileWriter(save_dir)
 
-        # Start time
+        # Start timer
         pre_training = time.time()
 
         # Train
@@ -253,7 +257,7 @@ def run():
                  input_image, correct_label, keep_prob, learning_rate,
                  merged_summary=merged_summary, filewriter=train_writer)
 
-        # End time
+        # End timer
         post_training = time.time()
 
         print('')
