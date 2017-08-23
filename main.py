@@ -125,8 +125,6 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     :return: Tuple of (logits, train_op, cross_entropy_loss)
     """
 
-    # TODO: Verify train_op, loss and optimizer
-    # TODO: Shape of correct_label?
     logits = tf.reshape(nn_last_layer, (-1, num_classes))
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=correct_label)
     cross_entropy_loss = tf.reduce_mean(cross_entropy)
@@ -138,7 +136,7 @@ tests.test_optimize(optimize)
 
 
 def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
-             correct_label, keep_prob, learning_rate):
+             correct_label, keep_prob, learning_rate, merged_summary=None, filewriter=None):
     """
     Train neural network and print out the loss during training.
     :param sess: TF Session
@@ -152,13 +150,24 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param keep_prob: TF Placeholder for dropout keep probability
     :param learning_rate: TF Placeholder for learning rate
     """
+    # Hyperparameters
+    dropout_keep_prob = 1.0
+    start_learning_rate = 0.001
+    learning_rate_decay = 1.00
 
+    # Initialize variables
     sess.run(tf.global_variables_initializer())
 
+    # Calculate number of batches
     num_train_images = 289
     num_batches = num_train_images // batch_size
 
-    # TODO: Implement function
+    # Number of trained images for Tensorboard graph
+    image_count = 0
+
+    # Batches between logging
+    num_batches_per_log = 10
+
     print('*** Starting training ***')
     for i in range(epochs):
         print('*** Epoch {} ***'.format(i+1))
@@ -167,23 +176,30 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
         batch_generator = get_batches_fn(batch_size)
 
         # Get one batch of images
-        for i in range(num_batches):
+        for j in range(num_batches):
             images, gt_images = next(batch_generator)
 
             # Feed dictionary
             feed_dict = {
                 input_image: images,
                 correct_label: gt_images,
-                keep_prob: 1.0,
-                learning_rate: 0.001
+                keep_prob: dropout_keep_prob,
+                learning_rate: start_learning_rate * learning_rate_decay ** i
             }
 
-            # Run operations
+            # Run train operation
             sess.run(train_op, feed_dict=feed_dict)
 
-            if i == num_batches-1 or i % 10 == 0:
+            # Print and log cross entropy loss
+            if j == num_batches-1 or (j+1) % num_batches_per_log == 0:
+                if filewriter is not None and merged_summary is not None:
+                    summary = sess.run(merged_summary, feed_dict=feed_dict)
+                    filewriter.add_summary(summary, image_count)
+                    image_count += batch_size * num_batches_per_log
+
                 loss = sess.run(cross_entropy_loss, feed_dict=feed_dict)
                 print("Cross Entropy Loss: ", loss)
+
 
 # Test batch function looks strange
 #tests.test_train_nn(train_nn)
@@ -228,11 +244,20 @@ def run():
 
         logits, train_op, cross_entropy_loss = optimize(nn_last_layer, correct_label, learning_rate, num_classes)
 
+        # Log Cross Entropy for visualization in Tensorboard
+        tf.summary.scalar('cross_entropy', cross_entropy_loss)
+        merged_summary = tf.summary.merge_all()
+        train_writer = tf.summary.FileWriter(os.path.join(runs_dir, 'train'))
+
+        # Start time
         pre_training = time.time()
 
+        # Train
         train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss,
-                 input_image, correct_label, keep_prob, learning_rate)
+                 input_image, correct_label, keep_prob, learning_rate,
+                 merged_summary=merged_summary, filewriter=train_writer)
 
+        # End time
         post_training = time.time()
 
         print('')
@@ -240,7 +265,7 @@ def run():
         print('Duration: %.0f seconds' % (post_training - pre_training))
         print('')
 
-        helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
+        # helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
 
         # OPTIONAL: Apply the trained model to a video
 
