@@ -38,6 +38,9 @@ def load_vgg(sess, vgg_path):
     # TODO: sess.graph instead of tf.get_default_graph()?
     # graph = sess.graph
 
+    # Tensorboard
+    # tf.summary.FileWriter('runs', graph)
+
     # Get tensors from graph
     image_input = graph.get_tensor_by_name(vgg_input_tensor_name)
     keep_prob = graph.get_tensor_by_name(vgg_keep_prob_tensor_name)
@@ -52,9 +55,9 @@ tests.test_load_vgg(load_vgg, tf)
 def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     """
     Create the layers for a fully convolutional network.  Build skip-layers using the vgg layers.
-    :param vgg_layer7_out: TF Tensor for VGG Layer 3 output
+    :param vgg_layer3_out: TF Tensor for VGG Layer 3 output
     :param vgg_layer4_out: TF Tensor for VGG Layer 4 output
-    :param vgg_layer3_out: TF Tensor for VGG Layer 7 output
+    :param vgg_layer7_out: TF Tensor for VGG Layer 7 output
     :param num_classes: Number of classes to classify
     :return: The Tensor for the last layer of output
     """
@@ -64,12 +67,49 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     # -b940-400f-afb2-2015319aa640/lessons/69fe4a9c-656e-46c8-bc32-aee9e60b8984/concepts/3dcaf318-9e4b-4bb6-b057
     # -886c254abd44
 
-    output3 = tf.layers.conv2d(vgg_layer3_out, num_classes, 1, strides=(1, 1))
-    output4 = tf.layers.conv2d(vgg_layer4_out, num_classes, 1, strides=(1, 1))
-    output7 = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, strides=(1, 1))
+    # vgg_layer7_out size (?, 1, 1, 4096)
+    # vgg_layer4_out size (?, 10, 36, 512)
+    # vgg_layer3_out size (?, 20, 72, 256)
 
-    output = tf.add(output3, output4)
-    output = tf.add(output, output7)
+    # TODO: 1x1 convolution on layer 7
+    # 1x1 convolution
+    # kernel_size = 1
+    # strides = (1, 1)
+    # vgg_layer7_out = tf.layers.conv2d(vgg_layer7_out, num_classes, kernel_size, strides=strides)
+
+    # Transpose
+    kernel_size = 3
+    strides = (10, 36)
+    filters = 512
+    output = tf.layers.conv2d_transpose(vgg_layer7_out, filters, kernel_size, strides=strides)
+    print(output.get_shape())
+    # Size is (?, 10, 36, 512)
+
+    # Add skip layer
+    output = tf.add(output, vgg_layer4_out)
+    print(output.get_shape())
+    # Size is (?, 10, 36, 512)
+
+    # Transpose
+    kernel_size = 3
+    strides = (2, 2)
+    filters = 256
+    output = tf.layers.conv2d_transpose(output, filters, kernel_size, strides=strides)
+    print(output.get_shape())
+    # Size is (?, 20, 72, 256)
+
+    # Add skip layer
+    output = tf.add(output, vgg_layer3_out)
+    print(output.get_shape())
+    # Size is (?, 20, 72, 256)
+
+    # Transpose
+    kernel_size = 16
+    strides = (8, 8)
+    filters = num_classes
+    output = tf.layers.conv2d_transpose(output, filters, kernel_size, strides=strides)
+    print(output.get_shape())
+    # Size is (?, 160, 576, num_classes)
 
     return output
 tests.test_layers(layers)
