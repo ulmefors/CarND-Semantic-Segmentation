@@ -61,16 +61,6 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :param num_classes: Number of classes to classify
     :return: The Tensor for the last layer of output
     """
-    # TODO: Implement function
-    # TODO: conv2d or conv2d_transpose?
-    # https://classroom.udacity.com/nanodegrees/nd013/parts/6047fe34-d93c-4f50-8336-b70ef10cb4b2/modules/595f35e6
-    # -b940-400f-afb2-2015319aa640/lessons/69fe4a9c-656e-46c8-bc32-aee9e60b8984/concepts/3dcaf318-9e4b-4bb6-b057
-    # -886c254abd44
-
-    # vgg_layer7_out size (?, 1, 1, 4096)
-    # vgg_layer4_out size (?, 10, 36, 512)
-    # vgg_layer3_out size (?, 20, 72, 256)
-
     # TODO: 1x1 convolution on layer 7
     # 1x1 convolution
     # kernel_size = 1
@@ -81,34 +71,29 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     kernel_size = 2
     strides = (2, 2)
     filters = 512
-    output = tf.layers.conv2d_transpose(vgg_layer7_out, filters, kernel_size, strides=strides)
-    # print(output.get_shape())
+    output = tf.layers.conv2d_transpose(vgg_layer7_out, filters, kernel_size, strides=strides, padding='same')
     # Size is (?, 10, 36, 512)
 
     # Add skip layer
     output = tf.add(output, vgg_layer4_out)
-    # print(output.get_shape())
     # Size is (?, 10, 36, 512)
 
     # Transpose
     kernel_size = 2
     strides = (2, 2)
     filters = 256
-    output = tf.layers.conv2d_transpose(output, filters, kernel_size, strides=strides)
-    # print(output.get_shape())
+    output = tf.layers.conv2d_transpose(output, filters, kernel_size, strides=strides, padding='same')
     # Size is (?, 20, 72, 256)
 
     # Add skip layer
     output = tf.add(output, vgg_layer3_out)
-    # print(output.get_shape())
     # Size is (?, 20, 72, 256)
 
     # Transpose
     kernel_size = 8
     strides = (8, 8)
     filters = num_classes
-    output = tf.layers.conv2d_transpose(output, filters, kernel_size, strides=strides)
-    # print(output.get_shape())
+    output = tf.layers.conv2d_transpose(output, filters, kernel_size, strides=strides, padding='same')
     # Size is (?, 160, 576, num_classes)
 
     return output
@@ -151,9 +136,9 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param learning_rate: TF Placeholder for learning rate
     """
     # Hyperparameters
-    dropout_keep_prob = 1.0
+    dropout_keep_prob = 0.8
     start_learning_rate = 0.001
-    learning_rate_decay = 1.00
+    learning_rate_decay = 1.0
 
     # Initialize variables
     sess.run(tf.global_variables_initializer())
@@ -166,7 +151,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     image_count = 0
 
     # Batches between logging
-    num_batches_per_log = 10
+    num_batches_per_log = 25
 
     print('*** Starting training ***')
     for i in range(epochs):
@@ -192,10 +177,15 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
 
             # Print and log cross entropy loss
             if j == num_batches-1 or (j+1) % num_batches_per_log == 0:
-                if filewriter is not None and merged_summary is not None:
+                feed_dict[keep_prob] = 1.0
+
+                try:
                     summary = sess.run(merged_summary, feed_dict=feed_dict)
                     filewriter.add_summary(summary, image_count)
                     image_count += batch_size * num_batches_per_log
+                except (TypeError, AttributeError):
+                    if i == 0 and j == 0:
+                        print('Not logging to Tensorboard')
 
                 loss = sess.run(cross_entropy_loss, feed_dict=feed_dict)
                 print("Cross Entropy Loss: ", loss)
