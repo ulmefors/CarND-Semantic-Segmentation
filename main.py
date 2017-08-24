@@ -70,33 +70,36 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     layer3_fcn = tf.layers.conv2d(vgg_layer3_out, filters, kernel_size, strides=strides, padding='same')
     """
 
-    # Transpose
+    # Transpose convolution
     kernel_size = 2
     strides = (2, 2)
     filters = 512
-    output = tf.layers.conv2d_transpose(vgg_layer7_out, filters, kernel_size, strides=strides, padding='same')
+    output = tf.layers.conv2d_transpose(vgg_layer7_out, filters, kernel_size,strides=strides, padding='same',
+                                        kernel_initializer=tf.truncated_normal_initializer(stddev=0.01))
     # Size is (?, 10, 36, 512)
 
-    # Add skip layer
+    # Skip layer
     output = tf.add(output, vgg_layer4_out)
     # Size is (?, 10, 36, 512)
 
-    # Transpose
+    # Transpose convolution
     kernel_size = 2
     strides = (2, 2)
     filters = 256
-    output = tf.layers.conv2d_transpose(output, filters, kernel_size, strides=strides, padding='same')
+    output = tf.layers.conv2d_transpose(output, filters, kernel_size, strides=strides, padding='same',
+                                        kernel_initializer=tf.truncated_normal_initializer(stddev=0.01))
     # Size is (?, 20, 72, 256)
 
-    # Add skip layer
+    # Skip layer
     output = tf.add(output, vgg_layer3_out)
     # Size is (?, 20, 72, 256)
 
-    # Transpose
+    # Transpose convolution
     kernel_size = 8
     strides = (8, 8)
     filters = num_classes
-    output = tf.layers.conv2d_transpose(output, filters, kernel_size, strides=strides, padding='same')
+    output = tf.layers.conv2d_transpose(output, filters, kernel_size, strides=strides, padding='same',
+                                        kernel_initializer=tf.truncated_normal_initializer(stddev=0.01))
     # Size is (?, 160, 576, num_classes)
 
     return output
@@ -214,11 +217,11 @@ def run():
     #  https://www.cityscapes-dataset.com/
 
     # Hyperparameters
-    epochs = 100
+    epochs = 30
     batch_size = 8
 
     # Save log and inference samples
-    training_name = 'k10b08e100do08lrd098'
+    training_name = 'k10b08e30do08lrd098-kernel-init'
     save_dir = os.path.join(runs_dir, 'train', training_name)
 
     # Placeholders
